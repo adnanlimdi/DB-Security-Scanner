@@ -36,10 +36,6 @@ class DBSS_Cleaner {
 	public function clean_row( $table, $column, $pk, $row_id ) {
 		global $wpdb;
 
-		$cache_key = "db_scanner_{$table}_{$row_id}";
-
-		$row = wp_cache_get( $cache_key, 'db_security_scanner' );
-
 		$targets = self::get_scan_targets();
 
 		// Validate table + column from whitelist (IMPORTANT for WP.org)
@@ -50,17 +46,21 @@ class DBSS_Cleaner {
 			return false;
 		}
 
-		// Primary key must be hardcoded for WP tables
+		// Primary key is fixed for WP core tables
 		$pk = 'ID';
+
+		$cache_key = "db_scanner_{$table}_{$row_id}";
+		$row       = wp_cache_get( $cache_key, 'db_security_scanner' );
 
 		if ( false === $row ) {
 
-			$sql = $wpdb->prepare(
-				"SELECT {$column} FROM {$table} WHERE {$pk} = %d",
-				$row_id
+			$row = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT $column FROM $table WHERE $pk = %d",
+					$row_id
+				),
+				ARRAY_A
 			);
-
-			$row = $wpdb->get_row( $sql, ARRAY_A );
 
 			wp_cache_set( $cache_key, $row, 'db_security_scanner', HOUR_IN_SECONDS );
 		}
@@ -76,6 +76,7 @@ class DBSS_Cleaner {
 			return false;
 		}
 
+		// UPDATE must also be safe (IMPORTANT FIX)
 		$result = $wpdb->update(
 			$table,
 			array(
@@ -83,9 +84,11 @@ class DBSS_Cleaner {
 			),
 			array(
 				$pk => $row_id,
-			)
+			),
+			array( '%s' ),
+			array( '%d' )
 		);
-		
+
 		if ( false !== $result ) {
 			wp_cache_set(
 				$cache_key,
@@ -98,7 +101,7 @@ class DBSS_Cleaner {
 		}
 
 		return false !== $result;
-	}
+}
 
 	/**
 	 * Clean all rows returned by a scan.
