@@ -1,0 +1,15 @@
+{
+"landingPage": "/wp-admin/admin.php?page=db-security-scanner",
+"login": true,
+"steps": [
+{
+"step": "installPlugin",
+"pluginData": {
+"resource": "git:directory",
+"url": "https://github.com/adnanlimdi/DB-Security-Scanner",
+"ref": "HEAD",
+"refType": "refname"
+}
+}
+]
+}

@@ -1,0 +1,17 @@
+/**
+ * Plugin Name: DB Security Scanner
+ * Description: Scans and removes malicious scripts and malware injections from WordPress database tables.
+ * Version: 1.0.0
+ * Author: Adnan Limdiwala
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: db-security-scanner
+ */
+                    GNU GENERAL PUBLIC LICENSE
+                       Version 2, June 1991
+
+ Copyright (C) 1989, 1991 Free Software Foundation, Inc.
+ 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
