@@ -36,14 +36,27 @@ class DBSS_Cleaner {
 	public function clean_row( $table, $column, $pk, $row_id ) {
 		global $wpdb;
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$row = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT {$column} FROM {$table} WHERE {$pk} = %d",
-				$row_id
-			),
-			ARRAY_A
-		);
+		//phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$row 	   = wp_cache_get( $cache_key, 'db_security_scanner' );
+		$table     = sanitize_key( $table );
+		$column    = sanitize_key( $column );
+		$pk        = sanitize_key( $pk );
+
+		$cache_key = "db_scanner_{$table}_{$row_id}";
+		$row 	   = wp_cache_get( $cache_key, 'db_security_scanner' );
+
+
+		if ( false === $row ) {
+			$row = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT {$column} FROM {$table} WHERE {$pk} = %d",
+					$row_id
+				),
+				ARRAY_A
+			);
+
+			wp_cache_set( $cache_key, $row, 'db_security_scanner', HOUR_IN_SECONDS );
+		}
 		// phpcs:enable
 
 		if ( empty( $row ) ) {
@@ -57,11 +70,27 @@ class DBSS_Cleaner {
 			return false;
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Required for database cleanup.
 		$result = $wpdb->update(
 			$table,
-			array( $column => $cleaned ),
-			array( $pk => $row_id )
+			array(
+				$column => $cleaned,
+			),
+			array(
+				$pk => $row_id,
+			)
 		);
+		
+		if ( false !== $result ) {
+			wp_cache_set(
+				$cache_key,
+				array(
+					$column => $cleaned,
+				),
+				'db_security_scanner',
+				HOUR_IN_SECONDS
+			);
+		}
 
 		return false !== $result;
 	}

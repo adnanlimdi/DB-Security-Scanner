@@ -225,8 +225,8 @@ class DBSS_Admin {
 
 		// SQL header.
 		echo "-- DB Security Scanner Backup\n";
-		echo '-- Generated: ' . gmdate( 'Y-m-d H:i:s' ) . " UTC\n";
-		echo '-- Database: ' . DB_NAME . "\n";
+		echo '-- Generated: ' . esc_html( gmdate( 'Y-m-d H:i:s' ) ) . " UTC\n";
+		echo '-- Database: ' . esc_html( DB_NAME ) . "\n";
 		echo "-- -----------------------------------------------\n\n";
 		echo "SET FOREIGN_KEY_CHECKS=0;\n";
 		echo "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n";
@@ -234,8 +234,8 @@ class DBSS_Admin {
 		foreach ( $tables as $table ) {
 			$table = esc_sql( $table );
 
-			echo "\n-- Table: `{$table}`\n";
-			echo "DROP TABLE IF EXISTS `{$table}`;\n";
+			echo esc_html( "\n-- Table: `{$table}`\n" );
+			echo esc_html( "DROP TABLE IF EXISTS `{$table}`;\n" );
 
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$create = $wpdb->get_row( "SHOW CREATE TABLE `{$table}`", ARRAY_N );
@@ -249,10 +249,14 @@ class DBSS_Admin {
 
 			do {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$rows = $wpdb->get_results(
-					$wpdb->prepare( "SELECT * FROM `{$table}` LIMIT %d OFFSET %d", $chunk_size, $offset ),
-					ARRAY_A
+				$table = sanitize_key( $table );
+				$query = $wpdb->prepare(
+					"SELECT * FROM `$table` LIMIT %d OFFSET %d",
+					$chunk_size,
+					$offset
 				);
+
+				$rows = $wpdb->get_results( $query, ARRAY_A );
 
 				if ( empty( $rows ) ) {
 					break;
