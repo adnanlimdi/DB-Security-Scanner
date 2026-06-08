@@ -1,5 +1,5 @@
 === DB Security Scanner ===
-Contributors: adnanlimdiwala
+Contributors: adnanlimdi
 Tags: security, malware, database, scanner, cleanup
 Requires at least: 5.0
 Tested up to: 6.7
