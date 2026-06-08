@@ -301,7 +301,7 @@ class DBSS_Admin {
 				<span class="dashicons dashicons-shield-alt" style="font-size:26px;width:26px;height:26px;vertical-align:middle;margin-right:6px;color:#2271b1;"></span>
 				<?php esc_html_e( 'DB Security Scanner', 'db-security-scanner' ); ?>
 			</h1>
-			<span class="dbss-subtitle"><?php esc_html_e( 'Scans: wp_posts · wp_options · wp_postmeta · wp_usermeta · wp_comments', 'db-security-scanner' ); ?></span>
+			<span class="dbss-subtitle dbss-notice-info"><?php esc_html_e( 'Scans: wp_posts · wp_options · wp_postmeta · wp_usermeta · wp_comments', 'db-security-scanner' ); ?></span>
 
 			<div class="dbss-notice-warning">
 				<span class="dashicons dashicons-warning"></span>

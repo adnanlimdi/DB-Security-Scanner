@@ -10,7 +10,29 @@
 .dbss-wrap {
 	max-width: 1100px;
 }
+span.dbss-subtitle.dbss-notice-info {
+    display: block;
+    padding: 16px 20px;
+    margin: 15px 0;
+    background: #f8fafc;
+    border: 1px solid #dcdcde;
+    border-left: 4px solid #2271b1;
+    border-radius: 4px;
+    color: #1d2327;
+    font-size: 14px;
+    line-height: 1.6;
+}
 
+span.dbss-subtitle.dbss-notice-info::before {
+
+    display: block;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #2271b1;
+    margin-bottom: 8px;
+}
 .dbss-wrap h1 {
 	font-size: 24px;
 	font-weight: 700;
