@@ -31,7 +31,6 @@ class DBSS_Admin {
 		add_action( 'wp_ajax_dbss_scan',       array( $this, 'ajax_scan' ) );
 		add_action( 'wp_ajax_dbss_clean_row',  array( $this, 'ajax_clean_row' ) );
 		add_action( 'wp_ajax_dbss_clean_all',  array( $this, 'ajax_clean_all' ) );
-		add_action( 'wp_ajax_dbss_db_download', array( $this, 'ajax_db_download' ) );
 	}
 
 	/**
@@ -184,112 +183,6 @@ class DBSS_Admin {
 	}
 
 	/**
-	 * AJAX handler — generate and stream a SQL database backup.
-	 *
-	 * Uses WordPress's $wpdb to export all tables as SQL INSERT statements.
-	 * Streams the file directly as a download to avoid memory issues.
-	 *
-	 * @since 1.0.0
-	 */
-	public function ajax_db_download() {
-		check_ajax_referer( 'dbss_nonce', 'nonce' );
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'Unauthorized.', 'db-security-scanner' ), 403 );
-		}
-
-		global $wpdb;
-
-		$tables_only = isset( $_POST['tables'] ) ? sanitize_text_field( wp_unslash( $_POST['tables'] ) ) : 'all';
-		$filename    = 'db-backup-' . gmdate( 'Y-m-d-His' ) . '.sql';
-
-		// Set headers for file download.
-		header( 'Content-Type: application/octet-stream' );
-		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
-		header( 'Pragma: no-cache' );
-		header( 'Expires: 0' );
-
-		// Disable WP output buffering.
-		if ( ob_get_level() ) {
-			ob_end_clean();
-		}
-
-		// Determine which tables to export.
-		if ( 'security' === $tables_only ) {
-			$tables = array_keys( DBSS_Patterns::get_scan_targets() );
-		} else {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$all    = $wpdb->get_results( 'SHOW TABLES', ARRAY_N );
-			$tables = array_column( $all, 0 );
-		}
-
-		// SQL header.
-		echo "-- DB Security Scanner Backup\n";
-		echo '-- Generated: ' . esc_html( gmdate( 'Y-m-d H:i:s' ) ) . " UTC\n";
-		echo '-- Database: ' . esc_html( DB_NAME ) . "\n";
-		echo "-- -----------------------------------------------\n\n";
-		echo "SET FOREIGN_KEY_CHECKS=0;\n";
-		echo "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n";
-
-		foreach ( $tables as $table ) {
-			$table = esc_sql( $table );
-
-			echo esc_html( "\n-- Table: `{$table}`\n" );
-			echo esc_html( "DROP TABLE IF EXISTS `{$table}`;\n" );
-
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$create = $wpdb->get_row( "SHOW CREATE TABLE `{$table}`", ARRAY_N );
-			if ( $create ) {
-				echo $create[1] . ";\n\n"; // phpcs:ignore WordPress.Security.EscapeOutput
-			}
-
-			// Export rows in chunks to avoid memory limits.
-			$offset     = 0;
-			$chunk_size = 500;
-
-			do {
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$table = sanitize_key( $table );
-				$query = $wpdb->prepare(
-					"SELECT * FROM `$table` LIMIT %d OFFSET %d",
-					$chunk_size,
-					$offset
-				);
-
-				$rows = $wpdb->get_results( $query, ARRAY_A );
-
-				if ( empty( $rows ) ) {
-					break;
-				}
-
-				$columns = '`' . implode( '`, `', array_keys( $rows[0] ) ) . '`';
-
-				foreach ( $rows as $row ) {
-					$values = array();
-					foreach ( $row as $value ) {
-						if ( null === $value ) {
-							$values[] = 'NULL';
-						} else {
-							$values[] = "'" . esc_sql( $value ) . "'";
-						}
-					}
-					echo 'INSERT INTO `' . $table . '` (' . $columns . ') VALUES (' . implode( ', ', $values ) . ");\n"; // phpcs:ignore WordPress.Security.EscapeOutput
-				}
-
-				$offset += $chunk_size;
-
-			} while ( count( $rows ) === $chunk_size );
-
-			echo "\n";
-		}
-
-		echo "SET FOREIGN_KEY_CHECKS=1;\n";
-		echo "-- End of backup\n";
-
-		exit;
-	}
-
-	/**
 	 * Render the admin page HTML.
 	 *
 	 * @since 1.0.0
@@ -351,36 +244,7 @@ class DBSS_Admin {
 
 			<!-- Results table -->
 			<div id="dbss-results-wrap"></div>
-
-			<hr class="dbss-divider">
-
-			<!-- Database download section -->
-			<div class="dbss-db-section" style="display:none">
-				<h3>
-					<span class="dashicons dashicons-database"></span>
-					<?php esc_html_e( 'Download Database Backup', 'db-security-scanner' ); ?>
-				</h3>
-				<p><?php esc_html_e( 'Generate and download an SQL backup of your WordPress database. Always backup before cleaning.', 'db-security-scanner' ); ?></p>
-
-				<div class="dbss-db-form">
-					<label for="dbss-db-scope" class="screen-reader-text"><?php esc_html_e( 'Tables to export', 'db-security-scanner' ); ?></label>
-					<select id="dbss-db-scope">
-						<option value="all"><?php esc_html_e( 'All Tables (Full Backup)', 'db-security-scanner' ); ?></option>
-						<option value="security"><?php esc_html_e( 'Scanned Tables Only', 'db-security-scanner' ); ?></option>
-					</select>
-
-					<button id="dbss-btn-db-download" class="button dbss-btn-db">
-						<span class="dashicons dashicons-database-export"></span>
-						<?php esc_html_e( 'Download Backup (.sql)', 'db-security-scanner' ); ?>
-					</button>
-				</div>
-
-				<div id="dbss-db-progress" class="dbss-db-progress">
-					<span class="dashicons dashicons-update dbss-spinner"></span>
-					<span id="dbss-db-progress-text"></span>
-				</div>
-			</div>
-
+			
 		</div>
 		<?php
 	}

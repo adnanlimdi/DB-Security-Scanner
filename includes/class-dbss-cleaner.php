@@ -36,28 +36,34 @@ class DBSS_Cleaner {
 	public function clean_row( $table, $column, $pk, $row_id ) {
 		global $wpdb;
 
-		//phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$row 	   = wp_cache_get( $cache_key, 'db_security_scanner' );
-		$table     = sanitize_key( $table );
-		$column    = sanitize_key( $column );
-		$pk        = sanitize_key( $pk );
-
 		$cache_key = "db_scanner_{$table}_{$row_id}";
-		$row 	   = wp_cache_get( $cache_key, 'db_security_scanner' );
 
+		$row = wp_cache_get( $cache_key, 'db_security_scanner' );
+
+		$targets = self::get_scan_targets();
+
+		// Validate table + column from whitelist (IMPORTANT for WP.org)
+		if (
+			! isset( $targets[ $table ] ) ||
+			! in_array( $column, $targets[ $table ], true )
+		) {
+			return false;
+		}
+
+		// Primary key must be hardcoded for WP tables
+		$pk = 'ID';
 
 		if ( false === $row ) {
-			$row = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT {$column} FROM {$table} WHERE {$pk} = %d",
-					$row_id
-				),
-				ARRAY_A
+
+			$sql = $wpdb->prepare(
+				"SELECT {$column} FROM {$table} WHERE {$pk} = %d",
+				$row_id
 			);
+
+			$row = $wpdb->get_row( $sql, ARRAY_A );
 
 			wp_cache_set( $cache_key, $row, 'db_security_scanner', HOUR_IN_SECONDS );
 		}
-		// phpcs:enable
 
 		if ( empty( $row ) ) {
 			return false;
@@ -70,7 +76,6 @@ class DBSS_Cleaner {
 			return false;
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Required for database cleanup.
 		$result = $wpdb->update(
 			$table,
 			array(
