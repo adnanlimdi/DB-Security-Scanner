@@ -37,21 +37,35 @@ class DBSS_Cleaner {
 	public function clean_row( $table, $column, $pk, $row_id ) {
 		global $wpdb;
 
-		$targets = self::get_scan_targets();
+		switch ( $table ) {
 
-		/*
-		* Direct database access is required for this functionality as this plugin scans
-		* WordPress core tables (posts, options, postmeta, usermeta, comments) for security analysis.
-		*
-		* Results are cached using wp_cache_set() and wp_cache_get() to minimize repeated queries.
-		* This ensures performance optimization while maintaining direct data inspection capability.
-		*/
-		// Validate table + column from whitelist (IMPORTANT for WP.org)
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching -- Required for security scanning of WP core tables. Results are cached using wp_cache.
-		if (
-			! isset( $targets[ $table ] ) ||
-			! in_array( $column, $targets[ $table ], true )
-		) {
+			case $GLOBALS['wpdb']->posts:
+			$columns = array( 'post_title', 'post_content', 'post_excerpt' );
+			break;
+
+			case $GLOBALS['wpdb']->options:
+			$columns = array( 'option_value' );
+			break;
+
+			case $GLOBALS['wpdb']->postmeta:
+			$columns = array( 'meta_value' );
+			break;
+
+			case $GLOBALS['wpdb']->usermeta:
+			$columns = array( 'meta_value' );
+			break;
+
+			case $GLOBALS['wpdb']->comments:
+			$columns = array( 'comment_content', 'comment_author_url' );
+			break;
+
+			default:
+			return false;
+		}
+
+	
+			 /* Validate column strictly */
+		if ( ! in_array( $column, $columns, true ) ) {
 			return false;
 		}
 
@@ -59,15 +73,13 @@ class DBSS_Cleaner {
 		$cache_key = "db_scanner_{$table}_{$row_id}";
 		$row       = wp_cache_get( $cache_key, 'db_security_scanner' );
 
-		$safe_table  = $table;
-		$safe_column = $column;
-		$safe_pk     = 'ID';
+		$pk     = 'ID';
 
 		if ( false === $row ) {
 
 			$row = $wpdb->get_row(
 				$wpdb->prepare(
-					"SELECT $safe_column FROM $safe_table WHERE $safe_pk = %d",
+					"SELECT $column FROM $table WHERE $pk = %d",
 					$row_id
 				),
 				ARRAY_A
