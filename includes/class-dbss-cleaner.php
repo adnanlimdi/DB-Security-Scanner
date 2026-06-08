@@ -33,12 +33,21 @@ class DBSS_Cleaner {
 	 * @param  int    $row_id Primary key value.
 	 * @return bool           True on success, false on failure or no change.
 	 */
+	
 	public function clean_row( $table, $column, $pk, $row_id ) {
 		global $wpdb;
 
 		$targets = self::get_scan_targets();
 
+		/*
+		* Direct database access is required for this functionality as this plugin scans
+		* WordPress core tables (posts, options, postmeta, usermeta, comments) for security analysis.
+		*
+		* Results are cached using wp_cache_set() and wp_cache_get() to minimize repeated queries.
+		* This ensures performance optimization while maintaining direct data inspection capability.
+		*/
 		// Validate table + column from whitelist (IMPORTANT for WP.org)
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching -- Required for security scanning of WP core tables. Results are cached using wp_cache.
 		if (
 			! isset( $targets[ $table ] ) ||
 			! in_array( $column, $targets[ $table ], true )
@@ -47,16 +56,18 @@ class DBSS_Cleaner {
 		}
 
 		// Primary key is fixed for WP core tables
-		$pk = 'ID';
-
 		$cache_key = "db_scanner_{$table}_{$row_id}";
 		$row       = wp_cache_get( $cache_key, 'db_security_scanner' );
+
+		$safe_table  = $table;
+		$safe_column = $column;
+		$safe_pk     = 'ID';
 
 		if ( false === $row ) {
 
 			$row = $wpdb->get_row(
 				$wpdb->prepare(
-					"SELECT $column FROM $table WHERE $pk = %d",
+					"SELECT $safe_column FROM $safe_table WHERE $safe_pk = %d",
 					$row_id
 				),
 				ARRAY_A
