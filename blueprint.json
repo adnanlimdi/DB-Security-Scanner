@@ -1,6 +1,11 @@
 {
-"landingPage": "/wp-admin/admin.php?page=db-security-scanner",
+"$schema": "https://playground.wordpress.net/blueprint-schema.json",
+"preferredVersions": {
+"php": "8.3",
+"wp": "latest"
+},
 "login": true,
+"landingPage": "/wp-admin/admin.php?page=db-security-scanner",
 "steps": [
 {
 "step": "installPlugin",
